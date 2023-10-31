@@ -5,7 +5,7 @@
 #include <stdio.h> //for printf
 
 //An example of a variable that persists beyond the function call.
-float exampleVariable_float = 0.0f;  //Note the trailing 'f' in the number. This is to force a single precision floating point.
+float exampleVariable_float = 0.0f;  //Note the trailing 'f' in the number. This is to force single precision floating point.
 Vec3f exampleVariable_Vec3f = Vec3f(0, 0, 0);
 int exampleVariable_int = 0;
 
@@ -108,14 +108,14 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
 
       float v3Meas = (hMeas - lastHeightMeas_meas) / (in.currentTime - lastHeightMeas_time);
       estVelocity_3 = (1-mixHeight)*estVelocity_3+mixHeight*v3Meas;
-      //store tihis measurement for the next velocity uodate
+      //store this measurement for the next velocity update
       lastHeightMeas_meas = hMeas;
       lastHeightMeas_time = in.currentTime;
     }
   }
 
   //horizontal estimator
-  //predicton step:
+  //prediction step:
   estVelocity_1 = estVelocity_1 + 0*dt; //assume constant
   estVelocity_2 = estVelocity_2 + 0*dt; //assume constant
 
@@ -177,36 +177,39 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
     cn[3] = inertia_zz*cmdAngAcc.z;//calculation angAcc*JBB to obtain torque n1 n2 n3
     totalForce = desNormalizedAcceleration*mass;//calculate totalForce c_sigma = m*a
     cn[0] = totalForce;//cn is [c_sigma;n1;n2;n3]
+
  //   for(int i = 0; i < 4; i++){
   //    for(int j = 0; j < 4; j++){
   //      cpi[i] += mixer[i][j] * cn[j];//derive cpi - motor respective force for motor i
   //    }
   //  }
+
     cpi[0] = mixer[0][0] * cn[0]+mixer[0][1] * cn[1]+mixer[0][2] * cn[2]+mixer[0][3] * cn[3];
     cpi[1] = mixer[1][0] * cn[0]+mixer[1][1] * cn[1]+mixer[1][2] * cn[2]+mixer[1][3] * cn[3];
     cpi[2] = mixer[2][0] * cn[0]+mixer[2][1] * cn[1]+mixer[2][2] * cn[2]+mixer[2][3] * cn[3];
     cpi[3] = mixer[3][0] * cn[0]+mixer[3][1] * cn[1]+mixer[3][2] * cn[2]+mixer[3][3] * cn[3];
+
 //  motorCommand1 -> located at body +x +y
 //  motorCommand2 -> located at body +x -y
 //  motorCommand3 -> located at body -x -y
 //  motorCommand4 -> located at body -x +y
+
   outVals.motorCommand1 = 0;//set the initial state as stationary for motor1
   outVals.motorCommand2 = 0;//set the initial state as stationary for motor2
   outVals.motorCommand3 = 0;//set the initial state as stationary for motor3
   outVals.motorCommand4 = 0;//set the initial state as stationary for motor4
 
-  float desiredspeed[4];//define desiredspeed for motor 1 2 3 4
+  float desiredspeed[4];//define desiredspeed for motor 1 2 3
+  int pwmcommand[4] = {0,0,0,0};//define desired pmwcommand for motor 1 2 3 4
+
 //motor1_respectiveforce = 10;      //debug purpose
 //motor2_respectiveforce = 10;
 //motor3_respectiveforce = 10;
  //motor4_respectiveforce = 10;
+
   for (int i=0;i<4;i++){
     desiredspeed[i] = speedFromForce(cpi[i]);//compute the desired speed from desired force motor i
-  }
-
-  int pwmcommand[4] = {0,0,0,0};//define desired pmwcommand for motor 1 2 3 4
-  for (int i =0;i<4;i++){
-    pwmcommand[i] = pwmCommandFromSpeed(desiredspeed[i]);//compute the desired speed from pmwcommand motor i
+    pwmcommand[i] = pwmCommandFromSpeed(desiredspeed[i]);
   }
 
   if(in.userInput.buttonBlue){//user push blue button and input the pwmcommand to move the UAV
@@ -215,6 +218,7 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
      outVals.motorCommand3 = pwmcommand[2];//
      outVals.motorCommand4 = pwmcommand[3];//
   }
+
   outVals.telemetryOutputs_plusMinus100 [0] = estRoll ;//1st row of output value in telemetry outputs is estimated roll
   outVals.telemetryOutputs_plusMinus100 [1] = estPitch ;//2nd row of output value in telemetry outputs is estimated roll
   outVals.telemetryOutputs_plusMinus100 [2] = estYaw ;//3rd row of output value in telemetry outputs is estimated roll
@@ -226,6 +230,7 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
   outVals.telemetryOutputs_plusMinus100 [8] = desiredAng.y;
   outVals.telemetryOutputs_plusMinus100 [9] = desNormalizedAcceleration;
   outVals.telemetryOutputs_plusMinus100 [10] = desAcc3;
+
   // send our attitude estimate back
   //outVals.telemetryOutputs_plusMinus100 [0] = estAtt_roll ;
   //outVals.telemetryOutputs_plusMinus100 [1] = estAtt_ pitch ;
@@ -243,6 +248,7 @@ MainLoopOutput MainLoop(MainLoopInput const &in) {
 
   lastMainLoopInputs = in;
   lastMainLoopOutputs = outVals;
+  PrintStatus();
 
   return outVals;
 }
